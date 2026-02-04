@@ -3,7 +3,7 @@ export interface QRCodeData {
   id: string;
   name: string;
   targetUrl: string;
-  createdAt: number;
+  createdAt: string; // ISO String per Supabase
   category: string;
   description?: string;
 }
@@ -11,7 +11,7 @@ export interface QRCodeData {
 export interface ScanEvent {
   id: string;
   qrId: string;
-  timestamp: number;
+  timestamp: string; // ISO String per Supabase
   device: string;
   location: string;
   browser: string;

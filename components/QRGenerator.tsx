@@ -15,29 +15,41 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
   const [category, setCategory] = useState('Marketing');
   const [suggestedCTA, setSuggestedCTA] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [qrColor, setQrColor] = useState('#0f172a');
+  const [error, setError] = useState<string | null>(null);
 
   const getTrackingUrl = (id: string) => {
     const baseUrl = window.location.origin + window.location.pathname;
     return `${baseUrl}?scan=${id}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !url) return;
+    
+    setError(null);
+    setIsSaving(true);
 
-    const id = Math.random().toString(36).substr(2, 9);
-    const newQR: QRCodeData = {
-      id,
-      name,
-      targetUrl: url,
-      category,
-      createdAt: Date.now(),
-      description: suggestedCTA,
-    };
+    try {
+      const id = Math.random().toString(36).substr(2, 9);
+      const newQR: QRCodeData = {
+        id,
+        name,
+        targetUrl: url,
+        category,
+        createdAt: new Date().toISOString(),
+        description: suggestedCTA,
+      };
 
-    storage.saveQRCode(newQR);
-    onCreated();
+      await storage.saveQRCode(newQR);
+      onCreated();
+    } catch (err: any) {
+      console.error("Errore nel salvataggio:", err);
+      setError(err.message || "Impossibile salvare il QR Code. Verifica la connessione.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSuggest = async () => {
@@ -54,12 +66,20 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
         <div className="space-y-6">
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-slate-800">Dettagli QR Code</h2>
+            
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl font-medium">
+                {error}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-semibold text-slate-600 mb-1">Nome Campagna</label>
               <input
                 type="text"
                 required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800"
+                disabled={isSaving}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 disabled:bg-slate-50"
                 placeholder="es: Menù Digitale, Promo Instagram..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -70,7 +90,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
               <input
                 type="url"
                 required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800"
+                disabled={isSaving}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 disabled:bg-slate-50"
                 placeholder="https://tuosito.it/promozione"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -80,7 +101,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Categoria</label>
                 <select
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white text-slate-800"
+                  disabled={isSaving}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white text-slate-800 disabled:bg-slate-50"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                 >
@@ -95,7 +117,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
                 <div className="flex gap-2">
                   <input
                     type="color"
-                    className="w-full h-[42px] p-1 rounded-xl border border-slate-200 cursor-pointer"
+                    disabled={isSaving}
+                    className="w-full h-[42px] p-1 rounded-xl border border-slate-200 cursor-pointer disabled:opacity-50"
                     value={qrColor}
                     onChange={(e) => setQrColor(e.target.value)}
                   />
@@ -108,27 +131,32 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
             <button
               type="button"
               onClick={handleSuggest}
-              disabled={loading || !url}
+              disabled={loading || !url || isSaving}
               className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-bold disabled:opacity-50 transition-colors mb-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              {loading ? 'Analisi in corso...' : 'Chiedi all\'AI un suggerimento CTA'}
+              {loading ? 'Analisi AI...' : 'Chiedi all\'AI un suggerimento CTA'}
             </button>
             {suggestedCTA ? (
               <p className="text-sm text-slate-600 italic leading-snug">" {suggestedCTA} "</p>
             ) : (
-              <p className="text-xs text-slate-400 italic">Inserisci l'URL per ricevere un suggerimento su cosa scrivere sotto il QR.</p>
+              <p className="text-xs text-slate-400 italic">Inserisci l'URL per ricevere un suggerimento AI.</p>
             )}
           </div>
 
           <button
             onClick={handleSubmit}
-            disabled={!name || !url}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
+            disabled={!name || !url || isSaving}
+            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
           >
-            Crea QR Code Tracciabile
+            {isSaving ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Salvataggio...
+              </>
+            ) : 'Crea QR Code Tracciabile'}
           </button>
         </div>
 
@@ -146,14 +174,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
             </div>
             <div className="text-center">
               <p className="text-slate-800 font-bold mb-1">{name || "Anteprima Nome"}</p>
-              <p className="text-slate-400 text-xs truncate max-w-[200px]">{url || "inserisci un link..."}</p>
+              <p className="text-slate-400 text-xs truncate max-w-[200px]">{url || "link destinazione..."}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 text-slate-400 text-xs bg-slate-50 px-4 py-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Le scansioni verranno tracciate automaticamente.
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ const getClient = (): SupabaseClient | null => {
   const key = process.env.SUPABASE_ANON_KEY;
   
   if (!url || !key || url === "" || key === "") {
-    console.error("ERRORE: Credenziali Supabase mancanti! Controlla le variabili d'ambiente.");
+    console.error("CONFIGURAZIONE MANCANTE: SUPABASE_URL o SUPABASE_ANON_KEY non trovate.");
     return null;
   }
   
@@ -19,7 +19,7 @@ const getClient = (): SupabaseClient | null => {
     supabase = createClient(url, key);
     return supabase;
   } catch (e) {
-    console.error("Errore critico durante l'inizializzazione di Supabase:", e);
+    console.error("Errore inizializzazione Supabase:", e);
     return null;
   }
 };
@@ -46,7 +46,7 @@ export const storage = {
         createdAt: item.created_at
       }));
     } catch (err) {
-      console.error('Errore durante il recupero dei QR:', err);
+      console.error('Errore fetch QR:', err);
       return [];
     }
   },
@@ -75,7 +75,7 @@ export const storage = {
 
   saveQRCode: async (qr: QRCodeData) => {
     const client = getClient();
-    if (!client) throw new Error("Database cloud non connesso.");
+    if (!client) throw new Error("Connessione al database cloud non riuscita. Controlla le impostazioni.");
 
     const dbData = {
       id: qr.id,
@@ -92,7 +92,7 @@ export const storage = {
     
     if (error) {
       console.error("Errore salvataggio Supabase:", error);
-      throw error;
+      throw new Error(error.message);
     }
   },
 
@@ -124,7 +124,7 @@ export const storage = {
     const newScan = {
       id: Math.random().toString(36).substr(2, 9),
       qr_id: qrId,
-      timestamp: Date.now(),
+      timestamp: new Date().toISOString(),
       device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
       location: 'Rilevata', 
       browser: getBrowserName(),
