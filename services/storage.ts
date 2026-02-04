@@ -11,7 +11,7 @@ const getClient = (): SupabaseClient | null => {
   const key = process.env.SUPABASE_ANON_KEY;
   
   if (!url || !key || url === "" || key === "") {
-    console.warn("Supabase credentials missing. Data persistence is disabled.");
+    console.error("ERRORE: Credenziali Supabase mancanti! Controlla le variabili d'ambiente.");
     return null;
   }
   
@@ -19,7 +19,7 @@ const getClient = (): SupabaseClient | null => {
     supabase = createClient(url, key);
     return supabase;
   } catch (e) {
-    console.error("Failed to initialize Supabase:", e);
+    console.error("Errore critico durante l'inizializzazione di Supabase:", e);
     return null;
   }
 };
@@ -29,25 +29,26 @@ export const storage = {
     const client = getClient();
     if (!client) return [];
     
-    const { data, error } = await client
-      .from('qrcodes')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Fetch QR error:', error);
+    try {
+      const { data, error } = await client
+        .from('qrcodes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        targetUrl: item.target_url,
+        category: item.category,
+        description: item.description,
+        createdAt: item.created_at
+      }));
+    } catch (err) {
+      console.error('Errore durante il recupero dei QR:', err);
       return [];
     }
-
-    // Mappatura da database (snake_case) a app (camelCase)
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.name,
-      targetUrl: item.target_url,
-      category: item.category,
-      description: item.description,
-      createdAt: item.created_at
-    }));
   },
 
   findQRCode: async (id: string): Promise<QRCodeData | undefined> => {
@@ -74,9 +75,8 @@ export const storage = {
 
   saveQRCode: async (qr: QRCodeData) => {
     const client = getClient();
-    if (!client) throw new Error("Database not connected");
+    if (!client) throw new Error("Database cloud non connesso.");
 
-    // Mappatura da app a database
     const dbData = {
       id: qr.id,
       name: qr.name,

@@ -12,6 +12,11 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadData = async () => {
+    const data = await storage.getQRCodes();
+    setQrs(data);
+  };
+
   useEffect(() => {
     const handleInit = async () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -20,14 +25,13 @@ const App: React.FC = () => {
       if (scanId) {
         const qr = await storage.findQRCode(scanId);
         if (qr) {
-          storage.logScan(scanId);
+          await storage.logScan(scanId);
           window.location.replace(qr.targetUrl);
           return;
         }
       }
       
-      const data = await storage.getQRCodes();
-      setQrs(data);
+      await loadData();
       setLoading(false);
     };
 
@@ -35,10 +39,9 @@ const App: React.FC = () => {
   }, []);
 
   const refreshData = async () => {
-    setLoading(true);
-    const data = await storage.getQRCodes();
-    setQrs(data);
-    setLoading(false);
+    // Aggiungiamo un piccolissimo delay per essere sicuri che Supabase abbia completato l'operazione
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await loadData();
   };
 
   const showNotify = (msg: string, type: 'success' | 'info' = 'success') => {
@@ -58,9 +61,9 @@ const App: React.FC = () => {
         </div>
 
         <nav className="space-y-2 flex-grow">
-          <NavItem active={view === 'dashboard'} icon="chart" label="Dashboard" onClick={() => setView('dashboard')} />
-          <NavItem active={view === 'generator'} icon="plus" label="Crea Nuovo" onClick={() => setView('generator')} />
-          <NavItem active={view === 'list'} icon="list" label="Le mie Campagne" onClick={() => setView('list')} />
+          <NavItem active={view === 'dashboard'} label="Dashboard" onClick={() => setView('dashboard')} />
+          <NavItem active={view === 'generator'} label="Crea Nuovo" onClick={() => setView('generator')} />
+          <NavItem active={view === 'list'} label="Le mie Campagne" onClick={() => setView('list')} />
         </nav>
 
         <div className="mt-auto pt-8 border-t border-slate-100">
@@ -83,12 +86,34 @@ const App: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
              <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+             <p className="mt-4 text-slate-400 font-medium">Caricamento dati dal cloud...</p>
           </div>
         ) : (
           <div className="pb-20">
             {view === 'dashboard' && <Dashboard />}
-            {view === 'generator' && <QRGenerator onCreated={() => { setView('list'); refreshData(); showNotify('Creato!'); }} />}
-            {view === 'list' && <QRListView qrs={qrs} onDelete={() => { refreshData(); showNotify('Eliminato'); }} onSimulateScan={(id) => storage.logScan(id)} />}
+            {view === 'generator' && (
+              <QRGenerator 
+                onCreated={async () => { 
+                  setView('list'); 
+                  showNotify('Salvataggio in corso...');
+                  await refreshData(); 
+                  showNotify('QR Code Creato!'); 
+                }} 
+              />
+            )}
+            {view === 'list' && (
+              <QRListView 
+                qrs={qrs} 
+                onDelete={async () => { 
+                  await refreshData(); 
+                  showNotify('Eliminato correttamente'); 
+                }} 
+                onSimulateScan={async (id) => {
+                  await storage.logScan(id);
+                  showNotify('Scansione simulata!', 'info');
+                }} 
+              />
+            )}
           </div>
         )}
       </main>
@@ -96,11 +121,11 @@ const App: React.FC = () => {
   );
 };
 
-const NavItem = ({ active, icon, label, onClick }: any) => {
+const NavItem = ({ active, label, onClick }: any) => {
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
+      className={`w-full text-left px-5 py-4 rounded-2xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
     >
       {label}
     </button>
