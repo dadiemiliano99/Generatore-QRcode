@@ -10,7 +10,6 @@ const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'generator' | 'list'>('dashboard');
   const [qrs, setQrs] = useState<QRCodeData[]>([]);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -19,11 +18,10 @@ const App: React.FC = () => {
     if (scanId) {
       const qr = storage.findQRCode(scanId);
       if (qr) {
-        setIsRedirecting(true);
+        // Logghiamo la scansione (operazione sincrona su localStorage)
         storage.logScan(scanId);
-        setTimeout(() => {
-          window.location.href = qr.targetUrl;
-        }, 1200);
+        // Reindirizzamento immediato alla destinazione
+        window.location.href = qr.targetUrl;
       }
     }
     setQrs(storage.getQRCodes());
@@ -44,19 +42,10 @@ const App: React.FC = () => {
     refreshData();
   };
 
-  if (isRedirecting) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
-        <div className="relative">
-          <div className="w-20 h-20 border-4 border-blue-100 rounded-full"></div>
-          <div className="w-20 h-20 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0"></div>
-        </div>
-        <h2 className="text-2xl font-black text-slate-800 mt-8 mb-2">Analisi QR Pulse in corso...</h2>
-        <p className="text-slate-500 text-center max-w-xs leading-relaxed">
-          Stiamo registrando la tua scansione in modo anonimo prima di portarti alla destinazione.
-        </p>
-      </div>
-    );
+  // Se l'URL contiene ?scan, non renderizziamo nulla (il browser cambierà pagina quasi istantaneamente)
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('scan') && storage.findQRCode(urlParams.get('scan')!)) {
+    return null; 
   }
 
   return (
