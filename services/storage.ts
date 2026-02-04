@@ -11,7 +11,7 @@ const getClient = (): SupabaseClient | null => {
   const key = process.env.SUPABASE_ANON_KEY;
   
   if (!url || !key || url === "" || key === "") {
-    console.warn("Supabase credentials missing. Data persistence is disabled. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your environment variables.");
+    console.warn("Supabase credentials missing. Data persistence is disabled.");
     return null;
   }
   
@@ -38,7 +38,16 @@ export const storage = {
       console.error('Fetch QR error:', error);
       return [];
     }
-    return data as QRCodeData[];
+
+    // Mappatura da database (snake_case) a app (camelCase)
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      targetUrl: item.target_url,
+      category: item.category,
+      description: item.description,
+      createdAt: item.created_at
+    }));
   },
 
   findQRCode: async (id: string): Promise<QRCodeData | undefined> => {
@@ -51,19 +60,40 @@ export const storage = {
       .eq('id', id)
       .single();
     
-    if (error) return undefined;
-    return data as QRCodeData;
+    if (error || !data) return undefined;
+
+    return {
+      id: data.id,
+      name: data.name,
+      targetUrl: data.target_url,
+      category: data.category,
+      description: data.description,
+      createdAt: data.created_at
+    };
   },
 
   saveQRCode: async (qr: QRCodeData) => {
     const client = getClient();
     if (!client) throw new Error("Database not connected");
 
+    // Mappatura da app a database
+    const dbData = {
+      id: qr.id,
+      name: qr.name,
+      target_url: qr.targetUrl,
+      category: qr.category,
+      description: qr.description,
+      created_at: qr.createdAt
+    };
+
     const { error } = await client
       .from('qrcodes')
-      .insert([qr]);
+      .insert([dbData]);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Errore salvataggio Supabase:", error);
+      throw error;
+    }
   },
 
   getScans: async (): Promise<ScanEvent[]> => {
@@ -76,7 +106,15 @@ export const storage = {
       .order('timestamp', { ascending: false });
     
     if (error) return [];
-    return data as ScanEvent[];
+
+    return (data || []).map(item => ({
+      id: item.id,
+      qrId: item.qr_id,
+      timestamp: item.timestamp,
+      device: item.device,
+      location: item.location,
+      browser: item.browser
+    }));
   },
 
   logScan: async (qrId: string) => {
