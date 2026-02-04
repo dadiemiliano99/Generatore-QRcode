@@ -31,7 +31,7 @@ export const storage = {
       qrId,
       timestamp: Date.now(),
       device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-      location: 'Localizzazione IP', // In produzione si userebbe un servizio di GeoIP
+      location: 'Rilevata', 
       browser: getBrowserName(),
     };
     localStorage.setItem(SCAN_KEY, JSON.stringify([newScan, ...scans]));
@@ -50,6 +50,6 @@ function getBrowserName() {
   if (userAgent.indexOf("Chrome") > -1) return "Chrome";
   if (userAgent.indexOf("Safari") > -1) return "Safari";
   if (userAgent.indexOf("Firefox") > -1) return "Firefox";
-  if (userAgent.indexOf("MSIE") > -1 || !!(document as any).documentMode) return "IE";
-  return "Unknown";
+  if (userAgent.indexOf("Edge") > -1) return "Edge";
+  return "Mobile Browser";
 }
