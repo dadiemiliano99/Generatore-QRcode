@@ -1,0 +1,7 @@
+{
+  "name": "QR Pulse - QR Code Generator & Analytics",
+  "description": "A sophisticated QR code generator with built-in scan tracking and data visualization dashboard. Create custom QR codes and monitor their performance in real-time.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
