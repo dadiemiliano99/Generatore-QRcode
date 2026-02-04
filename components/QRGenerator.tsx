@@ -15,6 +15,7 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
   const [category, setCategory] = useState('Marketing');
   const [suggestedCTA, setSuggestedCTA] = useState('');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [qrColor, setQrColor] = useState('#0f172a');
 
   const getTrackingUrl = (id: string) => {
@@ -22,10 +23,11 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
     return `${baseUrl}?scan=${id}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !url) return;
 
+    setSaving(true);
     const id = Math.random().toString(36).substr(2, 9);
     const newQR: QRCodeData = {
       id,
@@ -36,8 +38,14 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
       description: suggestedCTA,
     };
 
-    storage.saveQRCode(newQR);
-    onCreated();
+    try {
+      await storage.saveQRCode(newQR);
+      onCreated();
+    } catch (err) {
+      alert("Errore durante il salvataggio cloud. Riprova.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSuggest = async () => {
@@ -92,14 +100,12 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">Colore QR</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    className="w-full h-[42px] p-1 rounded-xl border border-slate-200 cursor-pointer"
-                    value={qrColor}
-                    onChange={(e) => setQrColor(e.target.value)}
-                  />
-                </div>
+                <input
+                  type="color"
+                  className="w-full h-[42px] p-1 rounded-xl border border-slate-200 cursor-pointer"
+                  value={qrColor}
+                  onChange={(e) => setQrColor(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -114,21 +120,17 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              {loading ? 'Analisi in corso...' : 'Chiedi all\'AI un suggerimento CTA'}
+              {loading ? 'Analisi AI...' : 'Chiedi suggerimento CTA'}
             </button>
-            {suggestedCTA ? (
-              <p className="text-sm text-slate-600 italic leading-snug">" {suggestedCTA} "</p>
-            ) : (
-              <p className="text-xs text-slate-400 italic">Inserisci l'URL per ricevere un suggerimento su cosa scrivere sotto il QR.</p>
-            )}
+            {suggestedCTA && <p className="text-sm text-slate-600 italic leading-snug">" {suggestedCTA} "</p>}
           </div>
 
           <button
             onClick={handleSubmit}
-            disabled={!name || !url}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
+            disabled={!name || !url || saving}
+            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
           >
-            Crea QR Code Tracciabile
+            {saving ? 'Sincronizzazione Cloud...' : 'Crea QR Code Pubblico'}
           </button>
         </div>
 
@@ -145,15 +147,9 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
               />
             </div>
             <div className="text-center">
-              <p className="text-slate-800 font-bold mb-1">{name || "Anteprima Nome"}</p>
+              <p className="text-slate-800 font-bold mb-1">{name || "Anteprima"}</p>
               <p className="text-slate-400 text-xs truncate max-w-[200px]">{url || "inserisci un link..."}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 text-slate-400 text-xs bg-slate-50 px-4 py-2 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Le scansioni verranno tracciate automaticamente.
           </div>
         </div>
       </div>

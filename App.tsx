@@ -9,26 +9,34 @@ import { QRCodeData } from './types';
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'generator' | 'list'>('dashboard');
   const [qrs, setQrs] = useState<QRCodeData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'info'} | null>(null);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const scanId = urlParams.get('scan');
+    const handleInitialFlow = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const scanId = urlParams.get('scan');
 
-    if (scanId) {
-      const qr = storage.findQRCode(scanId);
-      if (qr) {
-        // Logghiamo la scansione (operazione sincrona su localStorage)
-        storage.logScan(scanId);
-        // Reindirizzamento immediato alla destinazione
-        window.location.href = qr.targetUrl;
+      if (scanId) {
+        const qr = await storage.findQRCode(scanId);
+        if (qr) {
+          await storage.logScan(scanId);
+          window.location.href = qr.targetUrl;
+          return;
+        }
       }
-    }
-    setQrs(storage.getQRCodes());
+
+      const data = await storage.getQRCodes();
+      setQrs(data);
+      setLoading(false);
+    };
+
+    handleInitialFlow();
   }, []);
 
-  const refreshData = () => {
-    setQrs(storage.getQRCodes());
+  const refreshData = async () => {
+    const data = await storage.getQRCodes();
+    setQrs(data);
   };
 
   const showNotify = (msg: string, type: 'success' | 'info' = 'success') => {
@@ -36,33 +44,18 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const handleSimulateScan = (id: string) => {
-    storage.logScan(id);
-    showNotify('Scansione simulata registrata!', 'info');
+  const handleSimulateScan = async (id: string) => {
+    await storage.logScan(id);
+    showNotify('Scansione cloud registrata!', 'info');
     refreshData();
   };
 
-  // Se l'URL contiene ?scan, non renderizziamo nulla (il browser cambierà pagina quasi istantaneamente)
+  // Se siamo in fase di redirect, non mostrare nulla
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('scan') && storage.findQRCode(urlParams.get('scan')!)) {
-    return null; 
-  }
+  if (urlParams.get('scan')) return null;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#f8fafc]">
-      {/* Mobile Header */}
-      <div className="md:hidden bg-white p-4 border-b flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">QR</div>
-          <span className="font-black text-slate-800 tracking-tight">QR PULSE</span>
-        </div>
-        <button onClick={() => setView(view === 'generator' ? 'dashboard' : 'generator')} className="p-2 bg-slate-100 rounded-lg">
-           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
-        </button>
-      </div>
-
       {/* Sidebar */}
       <aside className="hidden md:flex w-72 bg-white border-r border-slate-200 p-8 flex-col sticky h-screen top-0">
         <div className="flex items-center gap-3 mb-12">
@@ -82,10 +75,12 @@ const App: React.FC = () => {
 
         <div className="mt-auto pt-8 border-t border-slate-100">
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stato Sistema</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stato Cloud</p>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-sm font-bold text-slate-700">Online & Tracciando</p>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${process.env.SUPABASE_URL ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+              <p className="text-sm font-bold text-slate-700">
+                {process.env.SUPABASE_URL ? 'DB Connesso' : 'Local Only'}
+              </p>
             </div>
           </div>
         </div>
@@ -114,17 +109,20 @@ const App: React.FC = () => {
           <h2 className="text-4xl font-black text-slate-900 tracking-tight">
             {view === 'dashboard' ? 'Insight Scansioni' : view === 'generator' ? 'Generatore QR' : 'Campagne Attive'}
           </h2>
-          <p className="text-slate-500 mt-2 text-lg">
-            {view === 'dashboard' && 'Visualizza l\'andamento reale delle tue interazioni fisiche.'}
-            {view === 'generator' && 'Configura il link, personalizza il design e scarica il tuo QR code.'}
-            {view === 'list' && 'Archivio completo dei tuoi codici generati con opzioni di gestione.'}
-          </p>
         </header>
 
         <div className="pb-20">
-          {view === 'dashboard' && <Dashboard />}
-          {view === 'generator' && <QRGenerator onCreated={() => { setView('list'); refreshData(); showNotify('QR Code creato con successo!'); }} />}
-          {view === 'list' && <QRListView qrs={qrs} onDelete={() => { refreshData(); showNotify('Eliminato correttamente'); }} onSimulateScan={handleSimulateScan} />}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1,2,3].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl loading-shimmer"></div>)}
+            </div>
+          ) : (
+            <>
+              {view === 'dashboard' && <Dashboard />}
+              {view === 'generator' && <QRGenerator onCreated={() => { setView('list'); refreshData(); showNotify('Salvato nel Cloud!'); }} />}
+              {view === 'list' && <QRListView qrs={qrs} onDelete={() => { refreshData(); showNotify('Rimosso dal Database'); }} onSimulateScan={handleSimulateScan} />}
+            </>
+          )}
         </div>
       </main>
     </div>
