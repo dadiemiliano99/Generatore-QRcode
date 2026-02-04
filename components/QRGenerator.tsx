@@ -15,8 +15,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
   const [category, setCategory] = useState('Marketing');
   const [suggestedCTA, setSuggestedCTA] = useState('');
   const [loading, setLoading] = useState(false);
+  const [qrColor, setQrColor] = useState('#0f172a');
 
-  // Genera l'URL di tracking reale basato sull'indirizzo corrente del sito
   const getTrackingUrl = (id: string) => {
     const baseUrl = window.location.origin + window.location.pathname;
     return `${baseUrl}?scan=${id}`;
@@ -37,9 +37,6 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
     };
 
     storage.saveQRCode(newQR);
-    setName('');
-    setUrl('');
-    setSuggestedCTA('');
     onCreated();
   };
 
@@ -51,83 +48,113 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
     setLoading(false);
   };
 
-  const previewId = "preview_id";
-  const previewTrackingUrl = getTrackingUrl(previewId);
-
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Genera Nuovo QR Code</h2>
+    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 max-w-4xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nome Campagna</label>
-            <input
-              type="text"
-              required
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              placeholder="es: Menù Estivo, Volantino Evento..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-slate-800">Dettagli QR Code</h2>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">Nome Campagna</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800"
+                placeholder="es: Menù Digitale, Promo Instagram..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 mb-1">URL di Destinazione</label>
+              <input
+                type="url"
+                required
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800"
+                placeholder="https://tuosito.it/promozione"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Categoria</label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white text-slate-800"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option>Marketing</option>
+                  <option>Personale</option>
+                  <option>Business</option>
+                  <option>Eventi</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-600 mb-1">Colore QR</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    className="w-full h-[42px] p-1 rounded-xl border border-slate-200 cursor-pointer"
+                    value={qrColor}
+                    onChange={(e) => setQrColor(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">URL di Destinazione Reale</label>
-            <input
-              type="url"
-              required
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              placeholder="https://tuosito.it"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-            <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">Il QR punterà al link di tracking e poi reindirizzerà qui.</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
-            <select
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option>Marketing</option>
-              <option>Personale</option>
-              <option>Business</option>
-              <option>Altro</option>
-            </select>
-          </div>
-          <div className="pt-2">
+
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <button
               type="button"
               onClick={handleSuggest}
               disabled={loading || !url}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-bold disabled:opacity-50 transition-colors mb-2"
             >
-              {loading ? 'Generando...' : 'AI Suggestion: Crea una Call to Action'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {loading ? 'Analisi in corso...' : 'Chiedi all\'AI un suggerimento CTA'}
             </button>
-            {suggestedCTA && (
-              <p className="mt-2 text-sm text-slate-600 italic">"{suggestedCTA}"</p>
+            {suggestedCTA ? (
+              <p className="text-sm text-slate-600 italic leading-snug">" {suggestedCTA} "</p>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Inserisci l'URL per ricevere un suggerimento su cosa scrivere sotto il QR.</p>
             )}
           </div>
+
           <button
-            type="submit"
-            className="w-full bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+            onClick={handleSubmit}
+            disabled={!name || !url}
+            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
           >
             Crea QR Code Tracciabile
           </button>
-        </form>
+        </div>
 
-        <div className="flex flex-col items-center justify-center bg-slate-50 rounded-xl p-8 border border-dashed border-slate-200">
-          <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-            <QRCodeCanvas 
-              value={url ? previewTrackingUrl : "https://qrpulse.app"} 
-              size={180}
-              level="H"
-              includeMargin
-            />
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center">
+            <div className="p-4 bg-slate-50 rounded-2xl mb-4">
+              <QRCodeCanvas 
+                id="preview-qr"
+                value={url ? getTrackingUrl("preview") : "https://qrpulse.app"} 
+                size={200}
+                level="H"
+                fgColor={qrColor}
+                includeMargin
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-slate-800 font-bold mb-1">{name || "Anteprima Nome"}</p>
+              <p className="text-slate-400 text-xs truncate max-w-[200px]">{url || "inserisci un link..."}</p>
+            </div>
           </div>
-          <p className="text-slate-500 text-xs text-center px-4">
-            {url ? `Anteprima QR Tracciabile. Destinazione finale: ${url}` : 'Inserisci un URL per generare il tracking'}
-          </p>
+          <div className="flex items-center gap-3 text-slate-400 text-xs bg-slate-50 px-4 py-2 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Le scansioni verranno tracciate automaticamente.
+          </div>
         </div>
       </div>
     </div>
