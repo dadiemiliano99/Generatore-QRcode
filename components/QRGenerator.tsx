@@ -19,7 +19,7 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
   const [qrColor, setQrColor] = useState('#0f172a');
   const [error, setError] = useState<string | null>(null);
 
-  const getTrackingUrl = (id: string) => {
+  const getTrackingUrl = (id: string | number) => {
     const baseUrl = window.location.origin + window.location.pathname;
     return `${baseUrl}?scan=${id}`;
   };
@@ -32,17 +32,16 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({ onCreated }) => {
     setIsSaving(true);
 
     try {
-      const id = Math.random().toString(36).substr(2, 9);
-      const newQR: QRCodeData = {
-        id,
+      // Non passiamo l'ID, lo creerà il DB
+      const newQR: Omit<QRCodeData, 'id'> = {
         name,
         targetUrl: url,
         category,
-        createdAt: new Date().toISOString(),
+        createdAt: Date.now(),
         description: suggestedCTA,
       };
 
-      await storage.saveQRCode(newQR);
+      await storage.saveQRCode(newQR as any);
       onCreated();
     } catch (err: any) {
       console.error("Errore nel salvataggio:", err);

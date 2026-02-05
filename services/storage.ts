@@ -19,7 +19,7 @@ export const storage = {
   setConfig: (url: string, key: string) => {
     localStorage.setItem(STORAGE_KEYS.URL, url);
     localStorage.setItem(STORAGE_KEYS.KEY, key);
-    supabase = null; // Forza la reinizializzazione
+    supabase = null; 
   },
 
   resetConfig: () => {
@@ -71,7 +71,7 @@ export const storage = {
     }
   },
 
-  findQRCode: async (id: string): Promise<QRCodeData | undefined> => {
+  findQRCode: async (id: string | number): Promise<QRCodeData | undefined> => {
     const client = storage.getClient();
     if (!client) return undefined;
 
@@ -93,21 +93,27 @@ export const storage = {
     };
   },
 
-  saveQRCode: async (qr: QRCodeData) => {
+  saveQRCode: async (qr: Omit<QRCodeData, 'id'>) => {
     const client = storage.getClient();
     if (!client) throw new Error("Database non configurato.");
 
+    // Assicuriamoci che la data sia SEMPRE un numero intero (timestamp)
+    const timestamp = typeof qr.createdAt === 'number' ? qr.createdAt : new Date(qr.createdAt).getTime();
+    
     const dbData = {
-      id: qr.id,
+      // Non inviamo l'ID: Supabase lo genererà automaticamente come BigInt serial
       name: qr.name,
       target_url: qr.targetUrl,
       category: qr.category,
       description: qr.description,
-      created_at: qr.createdAt
+      created_at: timestamp 
     };
 
     const { error } = await client.from('qrcodes').insert([dbData]);
-    if (error) throw new Error("Errore database: " + error.message);
+    if (error) {
+      console.error("Dettagli errore Supabase (Insert QR):", error);
+      throw new Error("Errore database: " + error.message);
+    }
   },
 
   getScans: async (): Promise<ScanEvent[]> => {
@@ -131,23 +137,24 @@ export const storage = {
     }));
   },
 
-  logScan: async (qrId: string) => {
+  logScan: async (qrId: string | number) => {
     const client = storage.getClient();
     if (!client) return;
 
+    // Non inviamo l'id, lasciamo che Supabase usi il suo BigInt seriale
     const newScan = {
-      id: Math.random().toString(36).substr(2, 9),
       qr_id: qrId,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(), // Numero intero
       device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
       location: 'Rilevata', 
       browser: getBrowserName(),
     };
     
-    await client.from('scans').insert([newScan]);
+    const { error } = await client.from('scans').insert([newScan]);
+    if (error) console.error("Errore log scan:", error);
   },
 
-  deleteQRCode: async (id: string) => {
+  deleteQRCode: async (id: string | number) => {
     const client = storage.getClient();
     if (!client) return;
     await client.from('qrcodes').delete().eq('id', id);

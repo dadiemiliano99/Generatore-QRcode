@@ -7,26 +7,31 @@ import { QRCodeData } from '../types';
 interface QRListViewProps {
   qrs: QRCodeData[];
   onDelete: () => void;
-  onSimulateScan: (id: string) => void;
+  // Fix: Updated type to accept both string and number to match QRCodeData.id
+  onSimulateScan: (id: string | number) => void;
 }
 
 export const QRListView: React.FC<QRListViewProps> = ({ qrs, onDelete, onSimulateScan }) => {
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Fix: Updated state to support tracking IDs that can be either string or number
+  const [copiedId, setCopiedId] = useState<string | number | null>(null);
 
-  const handleDelete = (id: string) => {
+  // Fix: Updated handleDelete to accept string | number ID
+  const handleDelete = (id: string | number) => {
     if (confirm('Sei sicuro di voler eliminare questo QR code e i suoi dati di tracciamento?')) {
       storage.deleteQRCode(id);
       onDelete();
     }
   };
 
-  const getTrackingUrl = (id: string) => {
+  // Fix: Updated getTrackingUrl to accept string | number ID
+  const getTrackingUrl = (id: string | number) => {
     const baseUrl = window.location.origin + window.location.pathname;
     return `${baseUrl}?scan=${id}`;
   };
 
-  const copyToClipboard = (id: string) => {
+  // Fix: Updated copyToClipboard to accept string | number ID
+  const copyToClipboard = (id: string | number) => {
     const url = getTrackingUrl(id);
     navigator.clipboard.writeText(url);
     setCopiedId(id);

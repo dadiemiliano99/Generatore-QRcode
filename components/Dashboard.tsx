@@ -42,10 +42,12 @@ export const Dashboard: React.FC = () => {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+      
       const count = scans.filter(s => {
         const scanDate = new Date(s.timestamp);
         return scanDate.toDateString() === d.toDateString();
       }).length;
+      
       return { name: dateStr, scans: count };
     }).reverse();
 
