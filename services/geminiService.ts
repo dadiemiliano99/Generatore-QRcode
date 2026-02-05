@@ -1,10 +1,10 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Recupera la chiave o usa una stringa vuota per evitare errori immediati
 const getApiKey = () => {
   try {
-    return process.env.API_KEY || "";
+    // Cerchiamo entrambi i nomi possibili per flessibilità
+    return process.env.API_KEY || process.env.API_KEY_gemini || "";
   } catch (e) {
     return "";
   }

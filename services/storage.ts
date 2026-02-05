@@ -7,17 +7,14 @@ let supabase: SupabaseClient | null = null;
 const getClient = (): SupabaseClient | null => {
   if (supabase) return supabase;
   
+  // Debug log per aiutarti a vedere cosa succede nel browser (controlla F12)
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
   
-  if (!url || url === "") {
-    console.error("ERRORE CONFIGURAZIONE: Variabile SUPABASE_URL mancante su Netlify!");
-  }
-  if (!key || key === "") {
-    console.error("ERRORE CONFIGURAZIONE: Variabile SUPABASE_ANON_KEY mancante su Netlify!");
-  }
-  
+  console.log("DEBUG STORAGE - URL presente:", !!url, "KEY presente:", !!key);
+
   if (!url || !key || url === "" || key === "") {
+    // Se siamo qui, Netlify non sta passando le variabili al browser correttamente
     return null;
   }
   
@@ -25,7 +22,7 @@ const getClient = (): SupabaseClient | null => {
     supabase = createClient(url, key);
     return supabase;
   } catch (e) {
-    console.error("Errore critico Supabase:", e);
+    console.error("Errore inizializzazione client Supabase:", e);
     return null;
   }
 };
@@ -82,7 +79,7 @@ export const storage = {
   saveQRCode: async (qr: QRCodeData) => {
     const client = getClient();
     if (!client) {
-      throw new Error("Configurazione Database Incompleta. Assicurati di aver inserito SUPABASE_URL e SUPABASE_ANON_KEY su Netlify e ripubblicato il sito.");
+      throw new Error("Il database non risponde. Assicurati di aver fatto 'Clear cache and deploy' su Netlify dopo aver aggiunto le variabili.");
     }
 
     const dbData = {
@@ -100,7 +97,7 @@ export const storage = {
     
     if (error) {
       console.error("Errore salvataggio Supabase:", error);
-      throw new Error("Errore del database: " + error.message);
+      throw new Error("Errore database: " + error.message);
     }
   },
 
