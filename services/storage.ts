@@ -78,7 +78,7 @@ export const storage = {
     const { data, error } = await client
       .from('qrcodes')
       .select('*')
-      .eq('id', id)
+      .eq('id', id.toString())
       .single();
     
     if (error || !data) return undefined;
@@ -97,11 +97,13 @@ export const storage = {
     const client = storage.getClient();
     if (!client) throw new Error("Database non configurato.");
 
-    // Assicuriamoci che la data sia SEMPRE un numero intero (timestamp)
     const timestamp = typeof qr.createdAt === 'number' ? qr.createdAt : new Date(qr.createdAt).getTime();
     
+    // Generiamo un ID univoco stringa dato che il DB lo richiede (TEXT PRIMARY KEY)
+    const uniqueId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const dbData = {
-      // Non inviamo l'ID: Supabase lo genererà automaticamente come BigInt serial
+      id: uniqueId,
       name: qr.name,
       target_url: qr.targetUrl,
       category: qr.category,
@@ -111,7 +113,7 @@ export const storage = {
 
     const { error } = await client.from('qrcodes').insert([dbData]);
     if (error) {
-      console.error("Dettagli errore Supabase (Insert QR):", error);
+      console.error("Errore Supabase Insert QR:", error);
       throw new Error("Errore database: " + error.message);
     }
   },
@@ -141,10 +143,13 @@ export const storage = {
     const client = storage.getClient();
     if (!client) return;
 
-    // Non inviamo l'id, lasciamo che Supabase usi il suo BigInt seriale
+    // Generiamo un ID univoco stringa anche per la scansione
+    const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const newScan = {
-      qr_id: qrId,
-      timestamp: Date.now(), // Numero intero
+      id: scanId,
+      qr_id: qrId.toString(),
+      timestamp: Date.now(), 
       device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
       location: 'Rilevata', 
       browser: getBrowserName(),
@@ -157,7 +162,7 @@ export const storage = {
   deleteQRCode: async (id: string | number) => {
     const client = storage.getClient();
     if (!client) return;
-    await client.from('qrcodes').delete().eq('id', id);
+    await client.from('qrcodes').delete().eq('id', id.toString());
   }
 };
 
