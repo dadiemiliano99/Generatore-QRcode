@@ -16,10 +16,9 @@
     }
   </style>
   <script>
-    // Inizializzazione sicura di process.env
+    // Assicuriamoci che process.env esista per il browser
     window.process = window.process || { env: {} };
-    window.process.env = window.process.env || {};
-    // Non sovrascrivere se già presenti (iniettati dall'ambiente)
+    // Mappiamo le variabili se iniettate globalmente o le lasciamo vuote per la configurazione manuale
     window.process.env.API_KEY = window.process.env.API_KEY || "";
     window.process.env.SUPABASE_URL = window.process.env.SUPABASE_URL || "";
     window.process.env.SUPABASE_ANON_KEY = window.process.env.SUPABASE_ANON_KEY || "";

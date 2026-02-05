@@ -10,8 +10,14 @@ const getClient = (): SupabaseClient | null => {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
   
+  if (!url || url === "") {
+    console.error("ERRORE CONFIGURAZIONE: Variabile SUPABASE_URL mancante su Netlify!");
+  }
+  if (!key || key === "") {
+    console.error("ERRORE CONFIGURAZIONE: Variabile SUPABASE_ANON_KEY mancante su Netlify!");
+  }
+  
   if (!url || !key || url === "" || key === "") {
-    console.error("CONFIGURAZIONE MANCANTE: SUPABASE_URL o SUPABASE_ANON_KEY non trovate.");
     return null;
   }
   
@@ -19,7 +25,7 @@ const getClient = (): SupabaseClient | null => {
     supabase = createClient(url, key);
     return supabase;
   } catch (e) {
-    console.error("Errore inizializzazione Supabase:", e);
+    console.error("Errore critico Supabase:", e);
     return null;
   }
 };
@@ -75,7 +81,9 @@ export const storage = {
 
   saveQRCode: async (qr: QRCodeData) => {
     const client = getClient();
-    if (!client) throw new Error("Connessione al database cloud non riuscita. Controlla le impostazioni.");
+    if (!client) {
+      throw new Error("Configurazione Database Incompleta. Assicurati di aver inserito SUPABASE_URL e SUPABASE_ANON_KEY su Netlify e ripubblicato il sito.");
+    }
 
     const dbData = {
       id: qr.id,
@@ -92,7 +100,7 @@ export const storage = {
     
     if (error) {
       console.error("Errore salvataggio Supabase:", error);
-      throw new Error(error.message);
+      throw new Error("Errore del database: " + error.message);
     }
   },
 
