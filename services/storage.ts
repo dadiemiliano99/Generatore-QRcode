@@ -4,32 +4,49 @@ import { QRCodeData, ScanEvent } from '../types';
 
 let supabase: SupabaseClient | null = null;
 
-const getClient = (): SupabaseClient | null => {
-  if (supabase) return supabase;
-  
-  // Debug log per aiutarti a vedere cosa succede nel browser (controlla F12)
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
-  
-  console.log("DEBUG STORAGE - URL presente:", !!url, "KEY presente:", !!key);
-
-  if (!url || !key || url === "" || key === "") {
-    // Se siamo qui, Netlify non sta passando le variabili al browser correttamente
-    return null;
-  }
-  
-  try {
-    supabase = createClient(url, key);
-    return supabase;
-  } catch (e) {
-    console.error("Errore inizializzazione client Supabase:", e);
-    return null;
-  }
+const STORAGE_KEYS = {
+  URL: 'qrpulse_supabase_url',
+  KEY: 'qrpulse_supabase_key'
 };
 
 export const storage = {
+  isConfigured: (): boolean => {
+    const url = process.env.SUPABASE_URL || localStorage.getItem(STORAGE_KEYS.URL);
+    const key = process.env.SUPABASE_ANON_KEY || localStorage.getItem(STORAGE_KEYS.KEY);
+    return !!(url && key);
+  },
+
+  setConfig: (url: string, key: string) => {
+    localStorage.setItem(STORAGE_KEYS.URL, url);
+    localStorage.setItem(STORAGE_KEYS.KEY, key);
+    supabase = null; // Forza la reinizializzazione
+  },
+
+  resetConfig: () => {
+    localStorage.removeItem(STORAGE_KEYS.URL);
+    localStorage.removeItem(STORAGE_KEYS.KEY);
+    supabase = null;
+  },
+
+  getClient: (): SupabaseClient | null => {
+    if (supabase) return supabase;
+    
+    const url = process.env.SUPABASE_URL || localStorage.getItem(STORAGE_KEYS.URL);
+    const key = process.env.SUPABASE_ANON_KEY || localStorage.getItem(STORAGE_KEYS.KEY);
+    
+    if (!url || !key) return null;
+    
+    try {
+      supabase = createClient(url, key);
+      return supabase;
+    } catch (e) {
+      console.error("Errore inizializzazione client Supabase:", e);
+      return null;
+    }
+  },
+
   getQRCodes: async (): Promise<QRCodeData[]> => {
-    const client = getClient();
+    const client = storage.getClient();
     if (!client) return [];
     
     try {
@@ -55,7 +72,7 @@ export const storage = {
   },
 
   findQRCode: async (id: string): Promise<QRCodeData | undefined> => {
-    const client = getClient();
+    const client = storage.getClient();
     if (!client) return undefined;
 
     const { data, error } = await client
@@ -77,10 +94,8 @@ export const storage = {
   },
 
   saveQRCode: async (qr: QRCodeData) => {
-    const client = getClient();
-    if (!client) {
-      throw new Error("Il database non risponde. Assicurati di aver fatto 'Clear cache and deploy' su Netlify dopo aver aggiunto le variabili.");
-    }
+    const client = storage.getClient();
+    if (!client) throw new Error("Database non configurato.");
 
     const dbData = {
       id: qr.id,
@@ -91,18 +106,12 @@ export const storage = {
       created_at: qr.createdAt
     };
 
-    const { error } = await client
-      .from('qrcodes')
-      .insert([dbData]);
-    
-    if (error) {
-      console.error("Errore salvataggio Supabase:", error);
-      throw new Error("Errore database: " + error.message);
-    }
+    const { error } = await client.from('qrcodes').insert([dbData]);
+    if (error) throw new Error("Errore database: " + error.message);
   },
 
   getScans: async (): Promise<ScanEvent[]> => {
-    const client = getClient();
+    const client = storage.getClient();
     if (!client) return [];
 
     const { data, error } = await client
@@ -123,7 +132,7 @@ export const storage = {
   },
 
   logScan: async (qrId: string) => {
-    const client = getClient();
+    const client = storage.getClient();
     if (!client) return;
 
     const newScan = {
@@ -139,7 +148,7 @@ export const storage = {
   },
 
   deleteQRCode: async (id: string) => {
-    const client = getClient();
+    const client = storage.getClient();
     if (!client) return;
     await client.from('qrcodes').delete().eq('id', id);
   }
